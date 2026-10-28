@@ -1,0 +1,15 @@
+{
+  "name": "dsh-aurabot-reading",
+  "version": "1.0.0",
+  "description": "Aurabot 读书看报模块：书架、随机阅读、进度与读后感、RSS 热点、收 txt、公共版权书库找书",
+  "private": true,
+  "license": "MIT",
+  "author": "DustSept",
+  "keywords": [
+    "dsh",
+    "aurabot",
+    "qq",
+    "reading",
+    "rss"
+  ]
+}

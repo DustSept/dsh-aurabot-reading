@@ -2,7 +2,7 @@
 
 给 [Aurabot](https://github.com/accomplish07zrh-eng/dsh-aurabot-qq)（大肥鱼）加一个「读书看报」模块：书架、随机阅读、进度、读后感、主动分享、RSS 热点、收主人发的 txt、去公共版权书库找书。
 
-模块 ID：`reading` · 扩展接口：v1 · 版本：1.0.0
+模块 ID：`reading` · 扩展接口：v1 · 版本：1.1.0
 
 ## 功能
 
@@ -15,6 +15,7 @@
 - **收文章链接**：把网页正文抓进书架，慢慢读。
 - **自己找书**：Project Gutenberg（英文公共版权）；中文维基文库在部分网络环境连不上，建议直接发 txt。
 - **收书反应**：收到新书先像人一样惊喜/好奇、猜体裁、评论书名或想象封面、联想读过的书；不报字数，不发“已放上书架”。
+- **读书看报面板**：当前在读哪本、进度多少、历次想法；想法按时间线排，可筛选读书/看报。
 
 ## 安装
 
@@ -30,6 +31,7 @@
 
    ```
    modules\reading\index.mjs
+   modules\reading\panel.js
    ```
 
 2. 等几秒，Aurabot 会自动加载。打开面板「扩展」页，应该能看到「读书看报」在跑。
@@ -50,6 +52,16 @@
 - 发一个文章链接并说“看看这篇”：她用 `reading_add_url` 收进书架并说第一反应。
 
 她也能自己调用这些工具：`reading_shelf`、`reading_open`、`reading_next`、`reading_note`、`reading_news`、`reading_add_url`、`reading_find`。
+
+## 面板
+
+面板「读书看报」页现在有三块：
+
+- **现在在看**：书名、进度条、百分比、已读/总字数、想法条数、上次阅读时间，以及今天自动读/主动分享/看报次数和下次阅读时间；
+- **想法**：按时间线列出读书、看报和收书时的想法；读书想法会带摘录，新闻想法会带标题和来源；可以按「全部 / 读书 / 看报」筛选；
+- **书架**：每本书的进度、想法数，当前这本带 ▶。
+
+想法会从 `state.json` 的 `books.<id>.notes` 和 `news.notes` 读取，不额外调用模型。
 
 ## 设置
 
@@ -75,7 +87,7 @@
 ```
 %USERPROFILE%\.dsh\plugins-data\aurabot\modules-data\reading\
   books\          书和文章（txt / md）
-  state.json      进度、笔记、下次阅读时间
+  state.json      进度、想法（books.<id>.notes、news.notes）、下次阅读时间
 ```
 
 这些是**本机个人数据**，不要提交到仓库或分享给别人。升级模块不会删它们。

@@ -22,7 +22,7 @@ const MAX_TEXT_CHARS = 8_000_000
 export default {
   id: 'reading',
   name: '读书看报',
-  version: '1.1.0',
+  version: '1.1.1',
   api: 1,
   panel: 'panel.js',
   description: '书架、随机阅读、进度和感想、主动分享、RSS 热点、收 txt、公共版权书库找书',
@@ -877,10 +877,18 @@ export default {
             if (!b) return { ok: false, message: '书架是空的，或者没有这本。' }
             const chunk = takeChunk(b, readLen())
             if (!chunk) return { ok: false, message: '《' + b.title + '》已经读完了。' }
+            // 手动读下一段也自动留一条感想，避免“聊天里说了、面板里没有”。
+            const thought = await thinkBook(b, chunk.text)
+            if (thought) {
+              b.notes.unshift({ at: Date.now(), quote: chunk.text.slice(0, 120), thought })
+              b.notes = b.notes.slice(0, 50)
+              saveState()
+            }
             return {
               ok: true,
               message: '《' + b.title + '》 读到 ' + chunk.pct + '%\n\n' + chunk.text +
-                '\n\n读完可以把你现在的感想用 reading_note 记下来。',
+                (thought ? '\n\n你读完这段的想法：\n' + thought : '') +
+                '\n\n如果还想补充，可以用 reading_note 再记一条。',
             }
           },
         }),
@@ -909,13 +917,36 @@ export default {
         }),
         api.defineTool({
           name: 'reading_news',
-          description: '看几条热点新闻标题和摘要，用来和主人聊今天发生的事。',
+          description: '看几条热点新闻标题和摘要，用来和主人聊今天发生的事；如果有具体想法，用 reading_news_note 记到看报笔记里。',
           properties: { count: { type: 'number', description: '看几条，默认 6' } },
           execute: async ({ count }) => {
             const items = await fetchNews(count)
             if (!items.length) return { ok: false, message: 'RSS 源都没取到新闻，可能网络不通。' }
             const lines = items.map((x, i) => (i + 1) + '. [' + x.source + '] ' + x.title + (x.summary ? '\n   ' + x.summary : ''))
             return { ok: true, message: '热点新闻：\n' + lines.join('\n') }
+          },
+        }),
+        api.defineTool({
+          name: 'reading_news_note',
+          description: '把刚才看新闻时的感想记到看报笔记里；之后读书看报面板会显示。',
+          properties: {
+            text: { type: 'string', description: '你的感想，一两句话' },
+            title: { type: 'string', description: '可选：新闻标题' },
+            source: { type: 'string', description: '可选：新闻来源' },
+          },
+          required: ['text'],
+          execute: async ({ text, title, source }) => {
+            const thought = String(text || '').trim().slice(0, 500)
+            if (!thought) return { ok: false, message: '感想是空的。' }
+            state.news.notes.unshift({
+              at: Date.now(),
+              title: String(title || '').trim().slice(0, 200),
+              source: String(source || '').trim().slice(0, 80),
+              thought,
+            })
+            state.news.notes = state.news.notes.slice(0, 30)
+            saveState()
+            return { ok: true, message: '记到看报笔记里了。' }
           },
         }),
         api.defineTool({
@@ -957,7 +988,7 @@ export default {
 
     api.rule((kind) => {
       if (kind !== 'private' || !S().enabled) return ''
-      return '你会读书看报：需要看书架、读下一段、记感想、看新闻、收文章或找书时，分别用 reading_shelf / reading_next / reading_note / reading_news / reading_add_url / reading_find。按工具返回的真实进度说，不要编造。'
+      return '你会读书看报：需要看书架、读下一段、记感想、看新闻、收文章或找书时，分别用 reading_shelf / reading_next / reading_note / reading_news / reading_news_note / reading_add_url / reading_find。按工具返回的真实进度说，不要编造。读完一段或看完新闻后，如果有具体想法，要用 reading_note 或 reading_news_note 记进笔记；只在聊天里说、不记，读书看报面板里就没有。'
     })
 
     api.context(({ chat }) => {

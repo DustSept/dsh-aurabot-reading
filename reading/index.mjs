@@ -22,8 +22,9 @@ const MAX_TEXT_CHARS = 8_000_000
 export default {
   id: 'reading',
   name: '读书看报',
-  version: '1.0.0',
+  version: '1.1.0',
   api: 1,
+  panel: 'panel.js',
   description: '书架、随机阅读、进度和感想、主动分享、RSS 热点、收 txt、公共版权书库找书',
 
   defaults: {
@@ -1013,6 +1014,52 @@ export default {
         if (!items.length) return 'RSS 源都没取到新闻。'
         return items.map((x, i) => (i + 1) + '. [' + x.source + '] ' + x.title).join('\n')
       },
+    })
+
+    api.route('/panel/state', async () => {
+      scanBooks()
+      const current = currentBook()
+      const books = Object.values(state.books).map((b) => ({
+        id: b.id,
+        title: b.title,
+        pct: pctOf(b),
+        finished: Boolean(b.finished),
+        noteCount: (b.notes || []).length,
+        offset: Number(b.offset) || 0,
+        chars: Number(b.chars) || 0,
+        lastReadAt: Number(b.lastReadAt) || 0,
+        addedAt: Number(b.addedAt) || 0,
+        source: b.source || '书架',
+      })).sort((a, b) => (b.id === state.currentId) - (a.id === state.currentId) || b.lastReadAt - a.lastReadAt)
+      const bookNotes = Object.values(state.books).flatMap((b) => (b.notes || []).map((n) => ({
+        ...n,
+        type: 'book',
+        bookId: b.id,
+        book: b.title,
+      })))
+      const newsNotes = (state.news.notes || []).map((n) => ({
+        ...n,
+        type: 'news',
+      }))
+      const notes = [...bookNotes, ...newsNotes]
+        .sort((a, b) => (Number(b.at) || 0) - (Number(a.at) || 0))
+        .slice(0, 120)
+      return {
+        ok: true,
+        current: current ? { ...current, pct: pctOf(current), noteCount: (current.notes || []).length } : null,
+        books,
+        notes,
+        stats: {
+          day: state.day || '',
+          sessions: Number(state.sessions) || 0,
+          shares: Number(state.shares) || 0,
+          newsSessions: Number(state.newsSessions) || 0,
+          nextReadAt: Number(state.nextReadAt) || 0,
+          lastReadAt: Number(state.lastReadAt) || 0,
+          maxPerDay: Number(S().maxPerDay) || 0,
+          shareMaxPerDay: Number(S().shareMaxPerDay) || 0,
+        },
+      }
     })
 
     api.route('/status', async () => {
